@@ -1,0 +1,2 @@
+"""Expense Tracker application package."""
+
