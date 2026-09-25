@@ -16,3 +16,16 @@ The development server runs at <http://127.0.0.1:8000>. FastAPI's interactive RE
 
 Running the seed command again does not duplicate data. It exits when it detects existing categories or expenses.
 
+## Category endpoints
+
+| Method | Path | Success status |
+| --- | --- | --- |
+| `GET` | `/categories` | `200` |
+| `GET` | `/categories/{id}` | `200` |
+| `POST` | `/categories` | `201` |
+| `PUT` | `/categories/{id}` | `200` |
+| `DELETE` | `/categories/{id}` | `204` |
+
+Creating or renaming a category to a duplicate name returns `409 Conflict`.
+Deleting a category that still has expenses also returns `409 Conflict` because
+the request conflicts with the category's current state.
