@@ -29,3 +29,22 @@ Running the seed command again does not duplicate data. It exits when it detects
 Creating or renaming a category to a duplicate name returns `409 Conflict`.
 Deleting a category that still has expenses also returns `409 Conflict` because
 the request conflicts with the category's current state.
+
+## Expense endpoints
+
+| Method | Path | Success status |
+| --- | --- | --- |
+| `GET` | `/expenses` | `200` |
+| `GET` | `/expenses/{id}` | `200` |
+| `POST` | `/expenses` | `201` |
+| `PUT` | `/expenses/{id}` | `200` |
+| `DELETE` | `/expenses/{id}` | `204` |
+
+The expense list accepts optional `category_id`, `from_date`, and `to_date`
+query parameters. They can be used independently or together:
+
+```text
+GET /expenses?category_id=1&from_date=2026-03-01&to_date=2026-03-31
+```
+
+Expense responses contain the raw `category_id` and the nested category object.
