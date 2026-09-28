@@ -36,3 +36,15 @@ class ExpenseResponse(BaseModel):
     category_id: int
     category: CategoryResponse
 
+
+class CategorySummaryResponse(BaseModel):
+    category_name: str
+    total: Decimal
+    share_percentage: Decimal
+
+
+class MonthlySummaryResponse(BaseModel):
+    month: str
+    total_spend: Decimal
+    categories: list[CategorySummaryResponse]
+

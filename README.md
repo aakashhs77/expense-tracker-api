@@ -48,3 +48,13 @@ GET /expenses?category_id=1&from_date=2026-03-01&to_date=2026-03-31
 ```
 
 Expense responses contain the raw `category_id` and the nested category object.
+
+## Monthly summary
+
+```text
+GET /summary?month=2026-03
+```
+
+The response contains the month's total spend and a category breakdown with
+each category's total and percentage share. A missing month or a value that
+does not exactly match `YYYY-MM` returns `400 Bad Request`.
