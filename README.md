@@ -58,3 +58,68 @@ GET /summary?month=2026-03
 The response contains the month's total spend and a category breakdown with
 each category's total and percentage share. A missing month or a value that
 does not exactly match `YYYY-MM` returns `400 Bad Request`.
+
+## GraphQL
+
+Strawberry's GraphiQL interface is available at
+<http://127.0.0.1:8000/graphql>. The schema provides the `expenses` and
+`categories` queries plus the `addExpense` and `deleteExpense` mutations.
+
+GraphQL uses camelCase names. This query fetches every category name and only
+the amounts of its expenses:
+
+```graphql
+query CategoryExpenseAmounts {
+  categories {
+    name
+    expenses {
+      amount
+    }
+  }
+}
+```
+
+The nested data is returned in one request. With the REST API, a client would
+first fetch the categories and then make a filtered expense request for each
+category, while also receiving fields it did not need.
+
+Expenses can be filtered with the same values as REST:
+
+```graphql
+query MarchFoodExpenses {
+  expenses(
+    categoryId: 1
+    fromDate: "2026-03-01"
+    toDate: "2026-03-31"
+  ) {
+    id
+    amount
+    description
+    spentOn
+    category {
+      name
+    }
+  }
+}
+```
+
+Example mutation:
+
+```graphql
+mutation AddExpense {
+  addExpense(
+    input: {
+      amount: "12.50"
+      description: "Coffee"
+      spentOn: "2026-03-21"
+      categoryId: 1
+    }
+  ) {
+    id
+    amount
+    category {
+      name
+    }
+  }
+}
+```

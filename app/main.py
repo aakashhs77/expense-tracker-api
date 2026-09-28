@@ -2,8 +2,10 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from strawberry.fastapi import GraphQLRouter
 
 from app.database import create_tables
+from app.graphql.schema import get_graphql_context, schema
 from app.routes.categories import router as categories_router
 from app.routes.expenses import router as expenses_router
 from app.routes.summary import router as summary_router
@@ -22,9 +24,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+graphql_router = GraphQLRouter(
+    schema,
+    context_getter=get_graphql_context,
+)
+
 app.include_router(categories_router)
 app.include_router(expenses_router)
 app.include_router(summary_router)
+app.include_router(graphql_router, prefix="/graphql")
 
 
 @app.get("/health", tags=["system"])

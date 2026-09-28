@@ -2,26 +2,26 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import Select, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Category, Expense
 from app.schemas import ExpenseInput, ExpenseResponse
+from app.services.expenses import (
+    create_expense_record,
+    delete_expense_record,
+    fetch_expense,
+    fetch_expenses,
+    update_expense_record,
+)
 
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
-def expense_query() -> Select[tuple[Expense]]:
-    return select(Expense).options(joinedload(Expense.category))
-
-
 def find_expense_or_404(expense_id: int, database: Session) -> Expense:
-    expense = database.scalar(
-        expense_query().where(Expense.id == expense_id)
-    )
+    expense = fetch_expense(database, expense_id)
     if expense is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -53,17 +53,12 @@ def list_expenses(
             detail="from_date must be on or before to_date.",
         )
 
-    statement = expense_query()
-
-    if category_id is not None:
-        statement = statement.where(Expense.category_id == category_id)
-    if from_date is not None:
-        statement = statement.where(Expense.spent_on >= from_date)
-    if to_date is not None:
-        statement = statement.where(Expense.spent_on <= to_date)
-
-    statement = statement.order_by(Expense.spent_on, Expense.id)
-    return list(database.scalars(statement))
+    return fetch_expenses(
+        database,
+        category_id=category_id,
+        from_date=from_date,
+        to_date=to_date,
+    )
 
 
 @router.get("/{expense_id}", response_model=ExpenseResponse)
@@ -81,15 +76,13 @@ def create_expense(
     database: DatabaseSession,
 ) -> Expense:
     category = find_category_or_422(expense_input.category_id, database)
-    expense = Expense(
+    return create_expense_record(
+        database,
         amount=expense_input.amount,
         description=expense_input.description,
         spent_on=expense_input.spent_on,
         category=category,
     )
-    database.add(expense)
-    database.commit()
-    return expense
 
 
 @router.put("/{expense_id}", response_model=ExpenseResponse)
@@ -101,18 +94,18 @@ def update_expense(
     expense = find_expense_or_404(expense_id, database)
     category = find_category_or_422(expense_input.category_id, database)
 
-    expense.amount = expense_input.amount
-    expense.description = expense_input.description
-    expense.spent_on = expense_input.spent_on
-    expense.category = category
-    database.commit()
-    return expense
+    return update_expense_record(
+        database,
+        expense,
+        amount=expense_input.amount,
+        description=expense_input.description,
+        spent_on=expense_input.spent_on,
+        category=category,
+    )
 
 
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_expense(expense_id: int, database: DatabaseSession) -> Response:
     expense = find_expense_or_404(expense_id, database)
-    database.delete(expense)
-    database.commit()
+    delete_expense_record(database, expense)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
