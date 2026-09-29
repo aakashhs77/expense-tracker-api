@@ -147,3 +147,14 @@ It covers every REST resource with success and error cases.
 
 See `curl.md` for a complete create, fetch, update, and delete expense
 lifecycle using cURL.
+
+## Frontend
+
+Open <http://127.0.0.1:8000/> after starting the FastAPI server. The page lists
+expenses, provides an expense creation form, and shows the category breakdown
+for a selected month. Adding an expense refreshes both the table and the
+relevant month's summary.
+
+The category dropdown is loaded through the GraphQL endpoint. Expense listing,
+creation, and monthly summaries use the REST API, so the page exercises both
+interfaces from the same FastAPI application.
