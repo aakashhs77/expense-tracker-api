@@ -123,3 +123,27 @@ mutation AddExpense {
   }
 }
 ```
+
+## Automated tests
+
+The test suite uses `test_expense_tracker.db`, resets its data before every
+test, and overrides FastAPI's `get_db` dependency. The development database is
+not used by either the REST or GraphQL tests.
+
+```bash
+pytest
+```
+
+The suite covers expense creation, reading and filtering, validation errors,
+missing resources, duplicate categories, monthly summary calculations, and
+GraphQL query and mutation responses.
+
+## Manual API collections
+
+Import
+`postman/Expense_Tracker_API.postman_collection.json` into Postman. Start the
+API with a freshly seeded database, then run the collection in its saved order.
+It covers every REST resource with success and error cases.
+
+See `curl.md` for a complete create, fetch, update, and delete expense
+lifecycle using cURL.
