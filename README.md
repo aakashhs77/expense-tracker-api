@@ -167,3 +167,8 @@ relevant month's summary.
 The category dropdown is loaded through the GraphQL endpoint. Expense listing,
 creation, and monthly summaries use the REST API, so the page exercises both
 interfaces from the same FastAPI application.
+
+Each expense row also has Edit and Delete actions. Edit fills the form and
+uses the REST update endpoint; Cancel edit returns to creation mode. Delete
+asks for confirmation. Adding, editing, or deleting an expense automatically
+refreshes the table and monthly summary.

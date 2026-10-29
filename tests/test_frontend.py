@@ -7,13 +7,13 @@ def test_frontend_is_served_at_root(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     assert "Expense Tracker" in response.text
-    assert '<link rel="stylesheet" href="/styles.css">' in response.text
-    assert '<script src="/app.js" defer></script>' in response.text
+    assert '<link rel="stylesheet" href="/styles.css?v=expense-actions-2">' in response.text
+    assert '<script src="/app.js?v=expense-actions-2" defer></script>' in response.text
 
 
 def test_frontend_assets_are_served(client: TestClient) -> None:
-    script = client.get("/app.js")
-    stylesheet = client.get("/styles.css")
+    script = client.get("/app.js?v=expense-actions-2")
+    stylesheet = client.get("/styles.css?v=expense-actions-2")
 
     assert script.status_code == 200
     assert "javascript" in script.headers["content-type"]

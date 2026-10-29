@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Expense Tracker</title>
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=expense-actions-2">
   </head>
   <body>
     <main class="shell">
@@ -39,6 +39,7 @@
                   <th scope="col">Category</th>
                   <th scope="col">Date</th>
                   <th scope="col">Amount</th>
+                  <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody id="expense-rows"></tbody>
@@ -51,7 +52,7 @@
             <div class="panel-header">
               <div>
                 <h2 id="add-title">Add expense</h2>
-                <p>Record a new transaction</p>
+                <p id="form-description">Record a new transaction</p>
               </div>
             </div>
             <form id="expense-form">
@@ -92,6 +93,9 @@
               <button class="primary-button" id="submit-button" type="submit">
                 Add expense
               </button>
+              <button class="cancel-button" id="cancel-edit-button" type="button" hidden>
+                Cancel edit
+              </button>
             </form>
           </section>
 
@@ -123,6 +127,6 @@
       </p>
     </main>
 
-    <script src="/app.js" defer></script>
+    <script src="/app.js?v=expense-actions-2" defer></script>
   </body>
 </html>

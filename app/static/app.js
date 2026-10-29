@@ -5,6 +5,8 @@ const currency = new Intl.NumberFormat("en-IN", {
 
 const state = {
   expenses: [],
+  editingId: null,
+  busy: false,
 };
 
 const expenseRows = document.querySelector("#expense-rows");
@@ -18,6 +20,10 @@ const summaryBreakdown = document.querySelector("#summary-breakdown");
 const statusMessage = document.querySelector("#status-message");
 const submitButton = document.querySelector("#submit-button");
 const refreshButton = document.querySelector("#refresh-button");
+
+const formTitle = document.querySelector("#add-title");
+const formDescription = document.querySelector("#form-description");
+const cancelEditButton = document.querySelector("#cancel-edit-button");
 
 function currentMonth() {
   const now = new Date();
@@ -59,7 +65,7 @@ function renderExpenses() {
   if (state.expenses.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 4;
+    cell.colSpan = 5;
     cell.className = "empty-cell";
     cell.textContent = "No expenses have been recorded yet.";
     row.append(cell);
@@ -96,7 +102,21 @@ function createExpenseRow(expense) {
   amount.className = "amount-cell";
   amount.textContent = currency.format(Number(expense.amount));
 
-  row.append(description, categoryCell, date, amount);
+  const actions = document.createElement("td");
+  const editButton = document.createElement("button");
+  const deleteButton = document.createElement("button");
+  editButton.type = deleteButton.type = "button";
+  editButton.className = "row-button";
+  deleteButton.className = "row-button delete-button";
+  editButton.textContent = "Edit";
+  deleteButton.textContent = "Delete";
+  editButton.setAttribute("aria-label", `Edit ${expense.description}`);
+  deleteButton.setAttribute("aria-label", `Delete ${expense.description}`);
+  editButton.disabled = deleteButton.disabled = state.busy;
+  editButton.addEventListener("click", () => startEditing(expense));
+  deleteButton.addEventListener("click", () => deleteExpense(expense));
+  actions.append(editButton, deleteButton);
+  row.append(description, categoryCell, date, amount, actions);
   return row;
 }
 
@@ -118,6 +138,7 @@ async function loadCategories() {
     throw new Error(response.errors[0]?.message || "GraphQL request failed.");
   }
 
+  const selectedCategory = categorySelect.value;
   categorySelect.replaceChildren();
   for (const category of response.data.categories) {
     const option = document.createElement("option");
@@ -125,6 +146,7 @@ async function loadCategories() {
     option.textContent = category.name;
     categorySelect.append(option);
   }
+  if (selectedCategory) categorySelect.value = selectedCategory;
 }
 
 function renderSummary(summary) {
@@ -187,22 +209,81 @@ async function loadCategoriesAndExpenses() {
 }
 
 async function refreshAll() {
+  if (state.busy) return;
   clearStatus();
-  refreshButton.disabled = true;
+  setBusy(true);
   try {
     await loadCategoriesAndExpenses();
     await loadSummary();
   } catch (error) {
     showStatus(error.message, "error");
   } finally {
-    refreshButton.disabled = false;
+    setBusy(false);
+  }
+}
+
+function setBusy(busy) {
+  state.busy = busy;
+  submitButton.disabled = cancelEditButton.disabled = refreshButton.disabled = busy;
+  renderExpenses();
+}
+
+function startEditing(expense) {
+  if (state.busy) return;
+  clearStatus();
+  state.editingId = expense.id;
+  expenseForm.elements.description.value = expense.description;
+  expenseForm.elements.amount.value = expense.amount;
+  spentOnInput.value = expense.spent_on;
+  categorySelect.value = String(expense.category_id);
+  formTitle.textContent = "Edit expense";
+  formDescription.textContent = "Update this transaction and its monthly summary.";
+  submitButton.textContent = "Save changes";
+  cancelEditButton.hidden = false;
+  expenseForm.scrollIntoView({ behavior: "smooth", block: "center" });
+  expenseForm.elements.description.focus();
+}
+
+function stopEditing() {
+  state.editingId = null;
+  expenseForm.elements.description.value = "";
+  expenseForm.elements.amount.value = "";
+  formTitle.textContent = "Add expense";
+  formDescription.textContent = "Record a new transaction";
+  submitButton.textContent = "Add expense";
+  cancelEditButton.hidden = true;
+}
+
+async function refreshExpenseViews(action) {
+  try {
+    await Promise.all([loadExpenses(), loadSummary()]);
+    showStatus(`Expense ${action} and totals refreshed.`, "success");
+  } catch (error) {
+    showStatus(`Expense ${action}, but refreshing failed: ${error.message} Click Refresh data to retry.`, "error");
+  }
+}
+
+async function deleteExpense(expense) {
+  if (state.busy) return;
+  if (!window.confirm(`Delete "${expense.description}"? This cannot be undone.`)) return;
+  clearStatus();
+  setBusy(true);
+  try {
+    await fetchJson(`/expenses/${expense.id}`, { method: "DELETE" });
+    if (state.editingId === expense.id) stopEditing();
+    await refreshExpenseViews("deleted");
+  } catch (error) {
+    showStatus(error.message, "error");
+  } finally {
+    setBusy(false);
   }
 }
 
 async function handleExpenseSubmit(event) {
   event.preventDefault();
+  if (state.busy) return;
   clearStatus();
-  submitButton.disabled = true;
+  const editingId = state.editingId;
 
   const formData = new FormData(expenseForm);
   const payload = {
@@ -212,26 +293,28 @@ async function handleExpenseSubmit(event) {
     category_id: Number(formData.get("category_id")),
   };
 
+  setBusy(true);
   try {
-    const created = await fetchJson("/expenses", {
-      method: "POST",
+    const saved = await fetchJson(editingId === null ? "/expenses" : `/expenses/${editingId}`, {
+      method: editingId === null ? "POST" : "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
-    monthInput.value = created.spent_on.slice(0, 7);
-    expenseForm.elements.description.value = "";
-    expenseForm.elements.amount.value = "";
-    await Promise.all([loadExpenses(), loadSummary()]);
-    showStatus("Expense added and totals refreshed.", "success");
+    stopEditing();
+    monthInput.value = saved.spent_on.slice(0, 7);
+    await refreshExpenseViews(editingId === null ? "added" : "updated");
   } catch (error) {
     showStatus(error.message, "error");
   } finally {
-    submitButton.disabled = false;
+    setBusy(false);
   }
 }
 
 expenseForm.addEventListener("submit", handleExpenseSubmit);
+cancelEditButton.addEventListener("click", () => {
+  if (!state.busy) stopEditing();
+});
 
 monthInput.addEventListener("change", () => {
   loadSummary().catch((error) => showStatus(error.message, "error"));
