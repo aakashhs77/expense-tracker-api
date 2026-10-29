@@ -94,3 +94,27 @@ def test_monthly_summary_calculation(client: TestClient) -> None:
             },
         ],
     }
+
+
+def test_update_expense_persists_all_fields_and_category(client: TestClient) -> None:
+    response = client.put(
+        "/expenses/1",
+        json={
+            "amount": "45.75",
+            "description": "  Train ticket  ",
+            "spent_on": "2026-04-15",
+            "category_id": 2,
+        },
+    )
+
+    assert response.status_code == 200
+    expected = {
+        "id": 1,
+        "amount": "45.75",
+        "description": "Train ticket",
+        "spent_on": "2026-04-15",
+        "category_id": 2,
+        "category": {"id": 2, "name": "Transport"},
+    }
+    assert response.json() == expected
+    assert client.get("/expenses/1").json() == expected

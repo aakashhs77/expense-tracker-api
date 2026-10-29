@@ -78,9 +78,7 @@ def create_expense(
     category = find_category_or_422(expense_input.category_id, database)
     return create_expense_record(
         database,
-        amount=expense_input.amount,
-        description=expense_input.description,
-        spent_on=expense_input.spent_on,
+        expense_input=expense_input,
         category=category,
     )
 
@@ -97,9 +95,7 @@ def update_expense(
     return update_expense_record(
         database,
         expense,
-        amount=expense_input.amount,
-        description=expense_input.description,
-        spent_on=expense_input.spent_on,
+        expense_input=expense_input,
         category=category,
     )
 

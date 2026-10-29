@@ -27,6 +27,24 @@
               }
             }
           ]
+        },
+        {
+          "name": "Unsupported method on /health - 405",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 405', () => pm.response.to.have.status(405));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -233,6 +251,24 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unsupported method on /categories - 405",
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/categories"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 405', () => pm.response.to.have.status(405));"
                 ]
               }
             }

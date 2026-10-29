@@ -79,9 +79,10 @@ query CategoryExpenseAmounts {
 }
 ```
 
-The nested data is returned in one request. With the REST API, a client would
-first fetch the categories and then make a filtered expense request for each
-category, while also receiving fields it did not need.
+The nested data is returned in one request. With this REST API, a client can
+fetch `/categories` and `/expenses` in two requests and group expenses by
+category locally, or make a filtered expense request for each category.
+GraphQL returns the requested nested shape and fields directly.
 
 Expenses can be filtered with the same values as REST:
 
@@ -134,6 +135,12 @@ not used by either the REST or GraphQL tests.
 pytest
 ```
 
+Frontend interaction checks use Node.js’s built-in test runner (no npm dependencies):
+
+```bash
+node --test tests/test_frontend.js
+```
+
 The suite covers expense creation, reading and filtering, validation errors,
 missing resources, duplicate categories, monthly summary calculations, and
 GraphQL query and mutation responses.
@@ -143,7 +150,9 @@ GraphQL query and mutation responses.
 Import
 `postman/Expense_Tracker_API.postman_collection.json` into Postman. Start the
 API with a freshly seeded database, then run the collection in its saved order.
-It covers every REST resource with success and error cases.
+It covers every REST resource with success and error cases. For the category
+list and health endpoints, which have no required inputs, unsupported-method
+requests exercise the `405 Method Not Allowed` response.
 
 See `curl.md` for a complete create, fetch, update, and delete expense
 lifecycle using cURL.

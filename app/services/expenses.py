@@ -1,10 +1,10 @@
 from datetime import date
-from decimal import Decimal
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Category, Expense
+from app.schemas import ExpenseInput
 
 
 def expense_query() -> Select[tuple[Expense]]:
@@ -40,15 +40,13 @@ def fetch_expense(database: Session, expense_id: int) -> Expense | None:
 def create_expense_record(
     database: Session,
     *,
-    amount: Decimal,
-    description: str,
-    spent_on: date,
+    expense_input: ExpenseInput,
     category: Category,
 ) -> Expense:
     expense = Expense(
-        amount=amount,
-        description=description,
-        spent_on=spent_on,
+        amount=expense_input.amount,
+        description=expense_input.description,
+        spent_on=expense_input.spent_on,
         category=category,
     )
     database.add(expense)
@@ -60,14 +58,12 @@ def update_expense_record(
     database: Session,
     expense: Expense,
     *,
-    amount: Decimal,
-    description: str,
-    spent_on: date,
+    expense_input: ExpenseInput,
     category: Category,
 ) -> Expense:
-    expense.amount = amount
-    expense.description = description
-    expense.spent_on = spent_on
+    expense.amount = expense_input.amount
+    expense.description = expense_input.description
+    expense.spent_on = expense_input.spent_on
     expense.category = category
     database.commit()
     return expense

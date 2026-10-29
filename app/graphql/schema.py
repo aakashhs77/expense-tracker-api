@@ -7,8 +7,9 @@ from fastapi import Depends
 from graphql import GraphQLError
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
+from strawberry.dataloader import DataLoader
 from strawberry.types import Info
 
 from app.database import get_db
@@ -49,7 +50,13 @@ class CategoryExpenseType:
 class CategoryType:
     id: int
     name: str
-    expenses: list[CategoryExpenseType]
+
+    @strawberry.field
+    async def expenses(
+        self,
+        info: Info["GraphQLContext", None],
+    ) -> list[CategoryExpenseType]:
+        return await info.context["category_expenses"].load(self.id)
 
 
 @strawberry.input
@@ -62,12 +69,24 @@ class AddExpenseInput:
 
 class GraphQLContext(TypedDict):
     database: Session
+    category_expenses: DataLoader[int, list[CategoryExpenseType]]
 
 
-def get_graphql_context(
+async def get_graphql_context(
     database: Annotated[Session, Depends(get_db)],
 ) -> GraphQLContext:
-    return {"database": database}
+    async def load_category_expenses(
+        category_ids: list[int],
+    ) -> list[list[CategoryExpenseType]]:
+        return await run_in_threadpool(
+            load_expenses_by_category, database, category_ids,
+        )
+
+    return {
+        "database": database,
+        # Keep batching, but avoid stale results after mutations in the same request.
+        "category_expenses": DataLoader(load_fn=load_category_expenses, cache=False),
+    }
 
 
 def expense_to_graphql(expense: Expense) -> ExpenseType:
@@ -83,24 +102,29 @@ def expense_to_graphql(expense: Expense) -> ExpenseType:
     )
 
 
-def category_to_graphql(category: Category) -> CategoryType:
-    ordered_expenses = sorted(
-        category.expenses,
-        key=lambda expense: (expense.spent_on, expense.id),
+def load_expenses_by_category(
+    database: Session,
+    category_ids: list[int],
+) -> list[list[CategoryExpenseType]]:
+    # Batch all requested categories, including categories with no expenses.
+    grouped: dict[int, list[CategoryExpenseType]] = {
+        category_id: [] for category_id in category_ids
+    }
+    statement = (
+        select(Expense)
+        .where(Expense.category_id.in_(category_ids))
+        .order_by(Expense.spent_on, Expense.id)
     )
-    return CategoryType(
-        id=category.id,
-        name=category.name,
-        expenses=[
+    for expense in database.scalars(statement):
+        grouped[expense.category_id].append(
             CategoryExpenseType(
                 id=expense.id,
                 amount=expense.amount,
                 description=expense.description,
                 spent_on=expense.spent_on,
             )
-            for expense in ordered_expenses
-        ],
-    )
+        )
+    return [grouped[category_id] for category_id in category_ids]
 
 
 def load_expenses(
@@ -119,13 +143,8 @@ def load_expenses(
 
 
 def load_categories(database: Session) -> list[CategoryType]:
-    statement = (
-        select(Category)
-        .options(selectinload(Category.expenses))
-        .order_by(Category.id)
-    )
-    categories = database.scalars(statement)
-    return [category_to_graphql(category) for category in categories]
+    categories = database.scalars(select(Category).order_by(Category.id))
+    return [CategoryType(id=category.id, name=category.name) for category in categories]
 
 
 def add_expense(
@@ -151,9 +170,7 @@ def add_expense(
 
     expense = create_expense_record(
         database,
-        amount=validated_input.amount,
-        description=validated_input.description,
-        spent_on=validated_input.spent_on,
+        expense_input=validated_input,
         category=category,
     )
     return expense_to_graphql(expense)
